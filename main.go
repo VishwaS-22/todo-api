@@ -21,7 +21,7 @@ func main() {
 
     // Register routes
     routes.RegisterAuthRoutes(r)
-    routes.RegisterTodoRoutes(r) // Assuming your todo routes are in routes/todo_routes.go
+    routes.RegisterTodoRoutes(r) 
 
     r.Run(":8000")
 }
