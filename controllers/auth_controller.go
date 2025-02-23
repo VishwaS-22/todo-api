@@ -6,60 +6,57 @@ import (
 	"todo-api/utils"
 
 	"github.com/gin-gonic/gin"
-	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
-// RegisterUser registers a new user using the injected DB.
 func RegisterUser(c *gin.Context) {
-    var user models.User
-    if err := c.ShouldBindJSON(&user); err != nil {
-        c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-        return
-    }
+	var user models.User
+	if err := c.ShouldBindJSON(&user); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 
-    // Hash the password
-    hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
-    if err != nil {
-        c.JSON(http.StatusInternalServerError, gin.H{"error": "Error hashing password"})
-        return
-    }
-    user.Password = string(hashedPassword)
+	// Use the model's method to hash the password
+	if err := user.HashPassword(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error hashing password"})
+		return
+	}
 
-    db := c.MustGet("db").(*gorm.DB)
-    if err := db.Create(&user).Error; err != nil {
-        c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-        return
-    }
-    c.JSON(http.StatusCreated, gin.H{"message": "User registered successfully"})
+	db := c.MustGet("db").(*gorm.DB)
+	if err := db.Create(&user).Error; err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{"message": "User registered successfully"})
 }
 
-// LoginUser logs in a user using the injected DB.
 func LoginUser(c *gin.Context) {
-    var reqUser models.User
-    var dbUser models.User
+	var reqUser models.User
+	var dbUser models.User
 
-    if err := c.ShouldBindJSON(&reqUser); err != nil {
-        c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-        return
-    }
+	if err := c.ShouldBindJSON(&reqUser); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 
-    db := c.MustGet("db").(*gorm.DB)
-    if err := db.Where("username = ?", reqUser.Username).First(&dbUser).Error; err != nil {
-        c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
-        return
-    }
+	db := c.MustGet("db").(*gorm.DB)
+	if err := db.Where("username = ?", reqUser.Username).First(&dbUser).Error; err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
+		return
+	}
 
-    if err := bcrypt.CompareHashAndPassword([]byte(dbUser.Password), []byte(reqUser.Password)); err != nil {
-        c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
-        return
-    }
+	if !dbUser.CheckPassword(reqUser.Password) {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
+		return
+	}
 
-    token, err := utils.GenerateToken(dbUser.Username)
-    if err != nil {
-        c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not generate token"})
-        return
-    }
+	token, err := utils.GenerateToken(dbUser.Username)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not generate token"})
+		return
+	}
 
-    c.JSON(http.StatusOK, gin.H{"token": token})
+	c.JSON(http.StatusOK, gin.H{"token": token})
 }
+
