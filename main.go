@@ -1,13 +1,21 @@
 package main
 
 import (
+    "log"
+    "os"
     "todo-api/database"
     "todo-api/routes"
 
     "github.com/gin-gonic/gin"
+    "github.com/joho/godotenv"
 )
 
 func main() {
+    // Load environment variables from .env file
+    if err := godotenv.Load(); err != nil {
+        log.Println("No .env file found")
+    }
+
     r := gin.Default()
 
     // Connect to the database
@@ -21,7 +29,12 @@ func main() {
 
     // Register routes
     routes.RegisterAuthRoutes(r)
-    routes.RegisterTodoRoutes(r) 
+    routes.RegisterTodoRoutes(r)
 
-    r.Run(":8000")
+    // Run on port specified in environment variable or default to 8000
+    port := os.Getenv("PORT")
+    if port == "" {
+        port = "8000"
+    }
+    r.Run(":" + port)
 }
