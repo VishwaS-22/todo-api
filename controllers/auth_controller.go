@@ -1,16 +1,16 @@
 package controllers
 
 import (
-    "net/http"
-    "todo-api/models"
-    "todo-api/utils"
+	"net/http"
+	"todo-api/models"
+	"todo-api/utils"
 
-    "github.com/gin-gonic/gin"
-    "golang.org/x/crypto/bcrypt"
-    "gorm.io/gorm"
+	"github.com/gin-gonic/gin"
+	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 )
 
-// RegisterUser registers a new user.
+// RegisterUser registers a new user using the injected DB.
 func RegisterUser(c *gin.Context) {
     var user models.User
     if err := c.ShouldBindJSON(&user); err != nil {
@@ -18,7 +18,7 @@ func RegisterUser(c *gin.Context) {
         return
     }
 
-    // Hash the password before saving
+    // Hash the password
     hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
     if err != nil {
         c.JSON(http.StatusInternalServerError, gin.H{"error": "Error hashing password"})
@@ -31,11 +31,10 @@ func RegisterUser(c *gin.Context) {
         c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
         return
     }
-
     c.JSON(http.StatusCreated, gin.H{"message": "User registered successfully"})
 }
 
-// LoginUser logs in a user and returns a JWT.
+// LoginUser logs in a user using the injected DB.
 func LoginUser(c *gin.Context) {
     var reqUser models.User
     var dbUser models.User
@@ -51,13 +50,11 @@ func LoginUser(c *gin.Context) {
         return
     }
 
-    // Compare passwords
     if err := bcrypt.CompareHashAndPassword([]byte(dbUser.Password), []byte(reqUser.Password)); err != nil {
         c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
         return
     }
 
-    // Generate token using our utility
     token, err := utils.GenerateToken(dbUser.Username)
     if err != nil {
         c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not generate token"})
